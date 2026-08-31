@@ -6,6 +6,10 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
+      sdk_version:
+        description: 'iOS SDK version to use (e.g., 18.6)'
+        required: false
+        default: '18.6'
       youtube_version:
         description: 'YouTube IPA version to use (e.g., 21.32.4)'
         required: false
@@ -17,6 +21,7 @@ on:
 
 env:
   HOME: /home/runner
+  THEOS: ${{ github.workspace }}/theos
 
 jobs:
   build:
@@ -30,20 +35,45 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Install Theos with SDKs
-        uses: Randomblock1/theos-action@v1
-
       - name: Setup environment
         run: |
-          THEOS_PATH="${{ github.workspace }}/theos"
-          echo "THEOS=$THEOS_PATH" >> $GITHUB_ENV
-          echo "THEOS_MAKE_PATH=$THEOS_PATH/makefiles" >> $GITHUB_ENV
+          echo "THEOS=$THEOS" >> $GITHUB_ENV
+          echo "THEOS_MAKE_PATH=$THEOS/makefiles" >> $GITHUB_ENV
           echo "HOME=/home/runner" >> $GITHUB_ENV
 
-      - name: Verify Theos
+      - name: Download Theos
+        uses: actions/checkout@v4
+        with:
+          repository: theos/theos
+          ref: master
+          path: theos
+
+      - name: Cache SDKs
+        id: SDK
+        uses: actions/cache@v4
+        env:
+          cache-name: iOS-${{ inputs.sdk_version }}-14.5-16.2-SDK
+        with:
+          path: theos/sdks/
+          key: ${{ env.cache-name }}
+
+      - name: Download iOS SDKs
+        if: steps.SDK.outputs.cache-hit != 'true'
+        run: |
+          echo "Downloading iOS SDKs..."
+          git clone -n --depth=1 --filter=tree:0 https://github.com/xybp888/iOS-SDKs/
+          cd iOS-SDKs/
+          git sparse-checkout set --no-cone iPhoneOS${{ inputs.sdk_version }}.sdk iPhoneOS14.5.sdk iPhoneOS16.2.sdk
+          git checkout
+          mv *.sdk $THEOS/sdks
+          echo "Available SDKs:"
+          ls -1 "$THEOS/sdks"
+
+      - name: Verify SDKs
         run: |
           echo "THEOS=$THEOS"
           echo "THEOS_MAKE_PATH=$THEOS_MAKE_PATH"
+          echo "Available SDKs:"
           ls -la "$THEOS/sdks/" | head -10
 
       - name: Initialize submodules
@@ -55,9 +85,23 @@ jobs:
         run: |
           ls -lh Tweaks/YTLite/ || echo "YTLite not found"
 
+      - name: Patch hardcoded iOS SDK targets to latest
+        run: |
+          echo "Before patch:"
+          grep -R "TARGET.*iphone:clang:" -n . || true
+          
+          find . -name Makefile -type f -print0 | while IFS= read -r -d '' file; do
+            perl -0pi -e 's/iphone:clang:[0-9]+(?:\.[0-9]+)*:/iphone:clang:latest:/g' "$file"
+          done
+          
+          echo "After patch:"
+          grep -R "TARGET.*iphone:clang:" -n . || true
+
       - name: Build package
         run: |
           echo "Building YTLitePlus..."
+          echo "THEOS=$THEOS"
+          echo "THEOS_MAKE_PATH=$THEOS_MAKE_PATH"
           make package FINALPACKAGE=1
           echo "Build complete:"
           ls -lh packages/ || echo "No packages directory"
