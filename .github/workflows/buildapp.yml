@@ -30,53 +30,37 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Install Theos
-        uses: Randomblock1/theos-action@v1
+      - name: Install Theos with SDKs
+        uses: dhinakg/theos-action@master
 
-      - name: Setup Theos environment
+      - name: Setup environment
         run: |
-          # Theos action installs to workspace/theos
           THEOS_PATH="${{ github.workspace }}/theos"
           echo "THEOS=$THEOS_PATH" >> $GITHUB_ENV
           echo "THEOS_MAKE_PATH=$THEOS_PATH/makefiles" >> $GITHUB_ENV
           echo "HOME=/home/runner" >> $GITHUB_ENV
-          echo "Set THEOS=$THEOS_PATH"
-          echo "Set THEOS_MAKE_PATH=$THEOS_PATH/makefiles"
 
-      - name: Verify Theos installation
+      - name: Verify Theos
         run: |
-          echo "=== Verifying Theos ==="
           echo "THEOS=$THEOS"
           echo "THEOS_MAKE_PATH=$THEOS_MAKE_PATH"
-          ls -la "$THEOS/"
-          ls -la "$THEOS_MAKE_PATH/" | head -20
-          echo "=== Checking for tweak.mk ==="
-          ls -la "$THEOS_MAKE_PATH/tweak.mk"
+          ls -la "$THEOS/sdks/" | head -10
 
       - name: Initialize submodules
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive
-          echo "Submodules initialized:"
-          ls -la Tweaks/
 
-      - name: Check YTLite version
+      - name: Check YTLite
         run: |
-          if [ -d "Tweaks/YTLite" ]; then
-            echo "YTLite directory contents:"
-            ls -lh Tweaks/YTLite/ || true
-          else
-            echo "Warning: Tweaks/YTLite directory not found"
-          fi
+          ls -lh Tweaks/YTLite/ || echo "YTLite not found"
 
       - name: Build package
         run: |
           echo "Building YTLitePlus..."
-          echo "THEOS=$THEOS"
-          echo "THEOS_MAKE_PATH=$THEOS_MAKE_PATH"
           make package FINALPACKAGE=1
-          echo "Build complete. Checking output:"
-          ls -lh packages/ || echo "No packages directory found"
+          echo "Build complete:"
+          ls -lh packages/ || echo "No packages directory"
           find . -name "*.ipa" -o -name "*.deb" | head -20
 
       - name: Upload artifact
@@ -102,10 +86,3 @@ jobs:
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Cleanup
-        if: always()
-        run: |
-          echo "Build completed at $(date)"
-          echo "Artifact uploaded to GitHub Actions"
-          echo "Check the Releases tab for download links"
