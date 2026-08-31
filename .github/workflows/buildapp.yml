@@ -17,6 +17,7 @@ on:
 
 env:
   THEOS: /var/lib/theos
+  THEOS_MAKE_PATH: /var/lib/theos/makefiles
   HOME: /home/runner
 
 jobs:
@@ -39,6 +40,7 @@ jobs:
       - name: Setup environment
         run: |
           echo "THEOS=/var/lib/theos" >> $GITHUB_ENV
+          echo "THEOS_MAKE_PATH=/var/lib/theos/makefiles" >> $GITHUB_ENV
           echo "HOME=/home/runner" >> $GITHUB_ENV
           mkdir -p /home/runner
 
@@ -61,6 +63,8 @@ jobs:
       - name: Build package
         run: |
           echo "Building YTLitePlus..."
+          echo "THEOS=$THEOS"
+          echo "THEOS_MAKE_PATH=$THEOS_MAKE_PATH"
           make package FINALPACKAGE=1
           echo "Build complete. Checking output:"
           ls -lh packages/ || echo "No packages directory found"
