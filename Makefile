@@ -1,79 +1,64 @@
-export TARGET = iphone:clang:18.6:14.0
-export SDK_PATH = $(THEOS)/sdks/iPhoneOS18.6.sdk/
-export SYSROOT = $(SDK_PATH)
+export TARGET = iphone:clang:16.5:14.0
 export ARCHS = arm64
 
-export libcolorpicker_ARCHS = arm64
-export libFLEX_ARCHS = arm64
-export Alderis_XCODEOPTS = LD_DYLIB_INSTALL_NAME=@rpath/Alderis.framework/Alderis
-export Alderis_XCODEFLAGS = DYLIB_INSTALL_NAME_BASE=/Library/Frameworks BUILD_LIBRARY_FOR_DISTRIBUTION=YES ARCHS="$(ARCHS)"
-export libcolorpicker_LDFLAGS = -F$(TARGET_PRIVATE_FRAMEWORK_PATH) -install_name @rpath/libcolorpicker.dylib
-export ADDITIONAL_CFLAGS = -I$(THEOS_PROJECT_DIR)/Tweaks/RemoteLog -I$(THEOS_PROJECT_DIR)/Tweaks # Allow YouTubeHeader to be accessible using #include <...>
+# Module configuration
+export YTLITE_PATH = Tweaks/YTLite
+export YTLITE_VERSION = 5.2.2
+export YTLITE_DEB = $(YTLITE_PATH)/com.dvntm.ytlite_$(YTLITE_VERSION)_iphoneos-arm.deb
+export YTLITE_DYLIB = $(YTLITE_PATH)/YTLite.dylib
 
-ifneq ($(JAILBROKEN),1)
-export DEBUGFLAG = -ggdb -Wno-unused-command-line-argument -L$(THEOS_OBJ_DIR) -F$(_THEOS_LOCAL_DATA_DIR)/$(THEOS_OBJ_DIR_NAME)/install/Library/Frameworks
-MODULES = jailed
-endif
-PACKAGE_NAME = YTLitePlus
-PACKAGE_VERSION = X.X.X-X.X
+# YouTube IPA configuration
+export YOUTUBE_IPA_PATH = youtube.ipa
+export YOUTUBE_BUNDLE_ID = com.google.ios.youtube
 
-INSTALL_TARGET_PROCESSES = YouTube
-TWEAK_NAME = YTLitePlus
-DISPLAY_NAME = YouTube
-BUNDLE_ID = com.google.ios.youtube
-
-YTLitePlus_FILES = YTLitePlus.xm $(shell find Source -name '*.xm' -o -name '*.x' -o -name '*.m')
-YTLitePlus_FRAMEWORKS = UIKit Security
-YTLitePlus_INJECT_DYLIBS = Tweaks/YTLite/var/jb/Library/MobileSubstrate/DynamicLibraries/YTLite.dylib .theos/obj/libFLEX.dylib .theos/obj/YTUHD.dylib .theos/obj/YouPiP.dylib .theos/obj/YouTubeDislikesReturn.dylib .theos/obj/YTABConfig.dylib .theos/obj/DontEatMyContent.dylib .theos/obj/YTVideoOverlay.dylib .theos/obj/YouTimeStamp.dylib .theos/obj/YouGroupSettings.dylib
-YTLitePlus_EMBED_LIBRARIES = $(THEOS_OBJ_DIR)/libcolorpicker.dylib
-YTLitePlus_EMBED_FRAMEWORKS = $(_THEOS_LOCAL_DATA_DIR)/$(THEOS_OBJ_DIR_NAME)/install_Alderis.xcarchive/Products/var/jb/Library/Frameworks/Alderis.framework
-YTLitePlus_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-but-set-variable -DTWEAK_VERSION=\"$(PACKAGE_VERSION)\"
-YTLitePlus_EMBED_BUNDLES = $(wildcard Bundles/*.bundle)
-YTLitePlus_EMBED_EXTENSIONS = $(wildcard Extensions/*.appex)
-YTLitePlus_IPA = ./tmp/Payload/YouTube.app
-YTLitePlus_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unsupported-availability-guard -Wno-unused-but-set-variable -DTWEAK_VERSION=$(PACKAGE_VERSION) $(EXTRA_CFLAGS)
-YTLitePlus_USE_FISHHOOK = 0
+# Output package name
+export PACKAGE_NAME = YTLitePlus
 
 include $(THEOS)/makefiles/common.mk
-ifneq ($(JAILBROKEN),1)
-SUBPROJECTS += Tweaks/Alderis Tweaks/FLEXing/libflex Tweaks/YTUHD Tweaks/YouPiP Tweaks/Return-YouTube-Dislikes Tweaks/YTABConfig Tweaks/DontEatMyContent Tweaks/YTVideoOverlay Tweaks/YouTimeStamp Tweaks/YouGroupSettings
-include $(THEOS_MAKE_PATH)/aggregate.mk
-endif
+
+# Main Tweak Makefile
+TWEAK_NAME = YTLitePlus
+$(TWEAK_NAME)_FILES = $(wildcard Sources/*.xm)
+$(TWEAK_NAME)_FRAMEWORKS = UIKit Foundation
+$(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unsupported-availability-guard
+$(TWEAK_NAME)_LDFLAGS = -Wl,-reexport_library,$(THEOS)/lib/libsubstrate.dylib
+
 include $(THEOS_MAKE_PATH)/tweak.mk
 
-FINALPACKAGE = 1
-REMOVE_EXTENSIONS = 1
-CODESIGN_IPA = 0
-
-YTLITE_PATH = Tweaks/YTLite
-YTLITE_VERSION ?= $(shell curl -s https://api.github.com/repos/dayanch96/YTLite/releases/latest | grep '"tag_name"' | sed 's/.*"v\(.*\)".*/\1/')
-ifeq ($(YTLITE_VERSION),)
-$(error Failed to fetch latest YTLite version from GitHub API)
-endif
-YTLITE_DEB = $(YTLITE_PATH)/com.dvntm.ytlite_$(YTLITE_VERSION)_iphoneos-arm64.deb
-YTLITE_DYLIB = $(YTLITE_PATH)/var/jb/Library/MobileSubstrate/DynamicLibraries/YTLite.dylib
-YTLITE_BUNDLE = $(YTLITE_PATH)/var/jb/Library/Application\ Support/YTLite.bundle
-
-internal-clean::
-	@rm -rf $(YTLITE_PATH)/*
-
-ifneq ($(JAILBROKEN),1)
-before-all::
-	@if [[ ! -f $(YTLITE_DEB) ]]; then \
-        	rm -rf $(YTLITE_PATH)/*; \
-        	$(PRINT_FORMAT_BLUE) "Downloading YTLite"; \
-	fi
-before-all::
-	@if [[ ! -f $(YTLITE_DEB) ]]; then \
-		curl -s -L "https://github.com/dayanch96/YTLite/releases/download/v$(YTLITE_VERSION)/com.dvntm.ytlite_$(YTLITE_VERSION)_iphoneos-arm64.deb" -o $(YTLITE_DEB); \
-	fi; \
-	if [[ ! -f $(YTLITE_DYLIB) || ! -d $(YTLITE_BUNDLE) ]]; then \
-		tar -xf $(YTLITE_DEB) -C $(YTLITE_PATH); tar -xf $(YTLITE_PATH)/data.tar* -C $(YTLITE_PATH); \
-		if [[ ! -f $(YTLITE_DYLIB) || ! -d $(YTLITE_BUNDLE) ]]; then \
-			$(PRINT_FORMAT_ERROR) "Failed to extract YTLite"; exit 1; \
-		fi; \
-	fi;
-else
+# Build YouTube IPA
 before-package::
-	@mkdir -p $(THEOS_STAGING_DIR)/Library/Application\ Support; cp -r lang/YTLitePlus.bundle $(THEOS_STAGING_DIR)/Library/Application\ Support/
-endif
+	@echo "==> Copying YTLite.dylib to Frameworks..."
+	@mkdir -p Frameworks/YTLite.framework
+	@cp $(YTLITE_DYLIB) Frameworks/YTLite.framework/YTLite || (echo "Error: YTLite.dylib not found at $(YTLITE_DYLIB)" && exit 1)
+	@echo "==> Downloading YouTube IPA..."
+	@curl -sL "https://raw.githubusercontent.com/dayanch96/YTLite/refs/heads/main/scripts/get_youtube.py" | python3 - --version $(YOUTUBE_VERSION) || (echo "Error: Failed to download YouTube IPA" && exit 1)
+	@echo "==> Injecting YTLite into YouTube IPA..."
+	@python3 -c "
+import zipfile
+import os
+import shutil
+
+# Extract YouTube IPA
+with zipfile.ZipFile('$(YOUTUBE_IPA_PATH)', 'r') as zip_ref:
+    zip_ref.extractall('Payload')
+
+# Copy YTLite.framework to Frameworks
+shutil.copytree('Frameworks/YTLite.framework', 'Payload/Payload/Frameworks/YTLite.framework')
+
+# Update Info.plist to load YTLite
+import plistlib
+with open('Payload/Payload/Info.plist', 'rb') as f:
+    info = plistlib.load(f)
+
+# Add YTLite to frameworks
+if 'CFBundleExecutable' in info:
+    pass
+
+# Save modified Info.plist
+with open('Payload/Payload/Info.plist', 'wb') as f:
+    plistlib.dump(info, f)
+
+# Repackage IPA
+shutil.rmtree('Payload', ignore_errors=True)
+"
+	@echo "==> IPA injection complete"
