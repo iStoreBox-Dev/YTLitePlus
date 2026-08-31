@@ -16,7 +16,6 @@ on:
         default: 'auto'
 
 env:
-  THEOS: /var/lib/theos
   HOME: /home/runner
 
 jobs:
@@ -33,27 +32,26 @@ jobs:
 
       - name: Install Theos
         uses: Randomblock1/theos-action@v1
-        with:
-          theos-path: /var/lib/theos
 
-      - name: Debug Theos structure
+      - name: Setup Theos environment
         run: |
-          echo "=== Theos Directory Structure ==="
-          ls -la /var/lib/theos/
-          echo "=== Makefiles Directory ==="
-          ls -la /var/lib/theos/makefiles/ 2>/dev/null || echo "makefiles/ not found"
-          echo "=== Looking for tweak.mk ==="
-          find /var/lib/theos -name "tweak.mk" 2>/dev/null || echo "tweak.mk not found"
-          echo "=== THEOS environment ==="
-          echo "THEOS=$THEOS"
-          echo "HOME=$HOME"
-
-      - name: Setup environment
-        run: |
-          echo "THEOS=/var/lib/theos" >> $GITHUB_ENV
-          # Theos action should set THEOS_MAKE_PATH automatically
-          # If not, we'll set it after checking the structure
+          # Theos action installs to workspace/theos
+          THEOS_PATH="${{ github.workspace }}/theos"
+          echo "THEOS=$THEOS_PATH" >> $GITHUB_ENV
+          echo "THEOS_MAKE_PATH=$THEOS_PATH/makefiles" >> $GITHUB_ENV
           echo "HOME=/home/runner" >> $GITHUB_ENV
+          echo "Set THEOS=$THEOS_PATH"
+          echo "Set THEOS_MAKE_PATH=$THEOS_PATH/makefiles"
+
+      - name: Verify Theos installation
+        run: |
+          echo "=== Verifying Theos ==="
+          echo "THEOS=$THEOS"
+          echo "THEOS_MAKE_PATH=$THEOS_MAKE_PATH"
+          ls -la "$THEOS/"
+          ls -la "$THEOS_MAKE_PATH/" | head -20
+          echo "=== Checking for tweak.mk ==="
+          ls -la "$THEOS_MAKE_PATH/tweak.mk"
 
       - name: Initialize submodules
         run: |
