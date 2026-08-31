@@ -17,7 +17,6 @@ on:
 
 env:
   THEOS: /var/lib/theos
-  THEOS_MAKE_PATH: /var/lib/theos/makefiles
   HOME: /home/runner
 
 jobs:
@@ -37,12 +36,24 @@ jobs:
         with:
           theos-path: /var/lib/theos
 
+      - name: Debug Theos structure
+        run: |
+          echo "=== Theos Directory Structure ==="
+          ls -la /var/lib/theos/
+          echo "=== Makefiles Directory ==="
+          ls -la /var/lib/theos/makefiles/ 2>/dev/null || echo "makefiles/ not found"
+          echo "=== Looking for tweak.mk ==="
+          find /var/lib/theos -name "tweak.mk" 2>/dev/null || echo "tweak.mk not found"
+          echo "=== THEOS environment ==="
+          echo "THEOS=$THEOS"
+          echo "HOME=$HOME"
+
       - name: Setup environment
         run: |
           echo "THEOS=/var/lib/theos" >> $GITHUB_ENV
-          echo "THEOS_MAKE_PATH=/var/lib/theos/makefiles" >> $GITHUB_ENV
+          # Theos action should set THEOS_MAKE_PATH automatically
+          # If not, we'll set it after checking the structure
           echo "HOME=/home/runner" >> $GITHUB_ENV
-          mkdir -p /home/runner
 
       - name: Initialize submodules
         run: |
