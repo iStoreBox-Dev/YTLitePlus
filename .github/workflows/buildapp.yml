@@ -98,11 +98,14 @@ jobs:
           grep -R "TARGET.*iphone:clang:" -n . || true
 
       - name: Build package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Building YTLitePlus..."
           echo "THEOS=$THEOS"
           echo "THEOS_MAKE_PATH=$THEOS_MAKE_PATH"
-          make package FINALPACKAGE=1
+          make package FINALPACKAGE=1 \
+            YTLITE_VERSION=${{ inputs.ytlite_version != 'auto' && inputs.ytlite_version || '' }}
           echo "Build complete:"
           ls -lh packages/ || echo "No packages directory"
           find . -name "*.ipa" -o -name "*.deb" | head -20
