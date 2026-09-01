@@ -47,6 +47,7 @@ jobs:
           repository: theos/theos
           ref: master
           path: theos
+          submodules: recursive
 
       - name: Cache SDKs
         id: SDK
